@@ -58,7 +58,7 @@ ggplot(two_PitcherAmounts, aes(x = PITCHER_KEY, y = AmountOfPitches,
                           fill = two_PitcherAmounts$PITCH_TYPE_KEY)) + 
 geom_bar(stat = "identity", position = "dodge")
 ```
-
+ 
 ## Velocity Plot
 
 This plot shows the comparison of velocities between pitchers for each type of pitch. For all pitches but the curveball, pitcher A has a clear velocity advantage. In addition, pitcher A has better velocity control over his pitches compared to pitcher B, especially when looking at the curveball and four-seamer. 
