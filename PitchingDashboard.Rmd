@@ -1,0 +1,104 @@
+---
+title: "Pitching Dashboard"
+author: "Sean Henderson"
+date: '2022-10-28'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+
+```{r loading relevant packages and data}
+library(tidyverse)
+library(readxl)
+library(ggplot2)
+library(simputation)
+pitch_data <- read_excel("2023 Analytics Internship Problem Dataset.xlsx")
+```
+
+```{r filtering dataset to use}
+pitch_data <- pitch_data|> filter(PITCH_TYPE_KEY != "UN", PITCH_TYPE_KEY != "NULL" , PITCH_NUMBER != "NULL")
+pitch_data <- pitch_data|> 
+  mutate(woba_value = case_when(EVENT_RESULT_KEY == "single" ~ .9,
+                                EVENT_RESULT_KEY == "double" ~ 1.25,
+                                EVENT_RESULT_KEY == "triple" ~ 1.6,
+                                EVENT_RESULT_KEY == "home_run" ~ 2,
+                                (PITCH_RESULT_KEY == "InPlay" & pitch_data$O > 0) ~ 0)) |> 
+  mutate(GRAVITY = 36)
+
+pitch_data$RELEASE_HEIGHT <- pitch_data$RELEASE_HEIGHT * 12
+pitch_data$PLATE_Z <- pitch_data$PLATE_Z * 12
+pitch_data$PLATE_X <- pitch_data$PLATE_X * 12
+
+
+two_Pitchers <- pitch_data|>
+  select(PITCHER_KEY,PITCH_TYPE_KEY,PLATE_X,PLATE_Z,PITCH_RESULT_KEY,RELEASE_SPEED,
+         HORIZONTAL_BREAK,INDUCED_VERTICAL_BREAK,RELEASE_HEIGHT,woba_value,GRAVITY) |>
+  filter(PITCHER_KEY == "A"  | PITCHER_KEY == "B" , PITCH_TYPE_KEY != "SI")
+
+two_Pitchers$INDUCED_VERTICAL_BREAK <- as.numeric(as.character(two_Pitchers$INDUCED_VERTICAL_BREAK))
+da1 <- impute_lm(two_Pitchers, INDUCED_VERTICAL_BREAK ~ RELEASE_HEIGHT-GRAVITY-PLATE_Z)
+two_Pitchers <- da1
+```
+## Pitch Breakdown
+
+This plot shows the breakdown of types of pitches thrown by each pitcher. Both pitchers heavily rely on their fastball, with a mix of a secondary breaking ball. Their 3rd-5th pitches are not thrown frequent enough to be relied upon to get them out of a jam, but still available in their arsenal. 
+
+```{r pitch breakdown, echo=FALSE}
+two_PitcherAmounts <- two_Pitchers |> 
+    group_by(PITCHER_KEY,PITCH_TYPE_KEY) |> 
+  summarize(AmountOfPitches = n())
+  
+ggplot(two_PitcherAmounts, aes(x = PITCHER_KEY, y = AmountOfPitches, 
+                          fill = two_PitcherAmounts$PITCH_TYPE_KEY)) + 
+geom_bar(stat = "identity", position = "dodge")
+```
+
+## Velocity Plot
+
+This plot shows the comparison of velocities between pitchers for each type of pitch. For all pitches but the curveball, pitcher A has a clear velocity advantage. In addition, pitcher A has better velocity control over his pitches compared to pitcher B, especially when looking at the curveball and four-seamer. 
+
+
+
+```{r velocity, echo=FALSE}
+two_Pitchers  |> 
+ggplot(two_Pitchers,mapping = aes(PITCHER_KEY,RELEASE_SPEED)) + geom_jitter() + 
+  facet_wrap(~ two_Pitchers$PITCH_TYPE_KEY)
+```
+## Strikezone plot
+
+This plot shows the strikezone locaton for each type of pitch. Pitcher B has less horizontal control with his changeup and his curveball compared to pitcher A. Pitcher A utilizes sliders outside the strike zone more often than pitcher B.  
+
+
+```{r strikezone, echo=FALSE}
+ggplot(two_Pitchers,aes(PLATE_X,PLATE_Z)) + geom_point() + facet_grid(two_Pitchers$PITCH_TYPE_KEY ~ PITCHER_KEY) + 
+  geom_rect(mapping = aes(ymax = 40.68,ymin = 18.6, xmax = -12, xmin = 12), alpha = 0, size = 1.2, colour = "red")
+```
+
+## movement plot
+
+This plot compares the vertical and horizontal movement for each type of pitch. The fastball movement was very similar for both pitchers. Pitcher A was able to generate more vertical break on his curveball compared to pitcher B. One thing that caught my eye was the lack of break from pitcher A's slider, I was expecting more of a general horizontal break. 
+
+```{r movement, echo=FALSE}
+ggplot(two_Pitchers,aes(HORIZONTAL_BREAK,INDUCED_VERTICAL_BREAK,col = PITCHER_KEY))+
+  geom_point() + facet_wrap(~ two_Pitchers$PITCH_TYPE_KEY) 
+```
+## Woba Plot
+
+This plot shows all the possible outcomes for balls that were in play. Pitcher B's changeup to the right of the strike zone was not favorable for him, having 4 of 5 pitches being singles. Pitcher A's fastball in the bottom right of the plate wasn't a desirable location for him, with frequent base hits off pitches there. Pitcher A should throw his slider more frequently in the bottom right of the plate, having an approximate woba of .042 in that location.  
+
+```{r woba, echo = FALSE}
+
+two_Pitchers_inPlay <- two_Pitchers
+two_Pitchers_inPlay <- two_Pitchers_inPlay |> 
+  filter(PITCH_RESULT_KEY == "InPlay" ,PITCH_TYPE_KEY != "FF")
+
+ggplot(two_Pitchers_inPlay, aes(PLATE_X,PLATE_Z)) + geom_point(aes(color = as.character(woba_value))) + 
+facet_grid(two_Pitchers_inPlay$PITCH_TYPE_KEY ~ two_Pitchers_inPlay$PITCHER_KEY) + 
+geom_rect(mapping = aes(ymax = 40.68, ymin = 18.6, xmax = -12, xmin = 12), alpha = 0, size = 1.2, colour = "black")
+```
