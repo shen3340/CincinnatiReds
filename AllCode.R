@@ -62,7 +62,7 @@ sum(cutters$PITCH_RESULT_KEY == "StrikeSwinging")
 
 
 #2B. 
-
+ 
 two_PitcherAmounts <- two_Pitchers |> 
   group_by(PITCHER_KEY,PITCH_TYPE_KEY) |> 
   summarize(AmountOfPitches = n())
