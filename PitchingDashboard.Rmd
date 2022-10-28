@@ -57,7 +57,7 @@ two_PitcherAmounts <- two_Pitchers |>
 ggplot(two_PitcherAmounts, aes(x = PITCHER_KEY, y = AmountOfPitches, 
                           fill = two_PitcherAmounts$PITCH_TYPE_KEY)) + 
 geom_bar(stat = "identity", position = "dodge")
-```
+``` 
  
 ## Velocity Plot
 
